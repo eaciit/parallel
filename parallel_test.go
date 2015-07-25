@@ -4,20 +4,27 @@ import (
 	"fmt"
 	"github.com/eaciit/toolkit"
 	"testing"
+	"time"
 )
 
+var e error
+
 func Test1(t *testing.T) {
-	fmt.Println("Test 1 - Generate 1000 Number")
-	idxs := make([]interface{}, 1000)
+	fmt.Println("Test 1 - Generate x Number")
+	numCount := 1000
+	workerCount := 100
+	idxs := make([]interface{}, numCount)
 	want := 0
-	for i := 1; i <= 1000; i++ {
+	for i := 1; i <= numCount; i++ {
 		idxs[i-1] = i
 		want += i
 	}
 
 	total := 0
-	pr := RunParallel(idxs, 10, func(js <-chan interface{}, rs chan<- *toolkit.Result) {
+	fmt.Printf("Run Parallel %d job within %d pools \n", numCount, workerCount)
+	pr := RunParallel(idxs, workerCount, func(js <-chan interface{}, rs chan<- *toolkit.Result) {
 		for j := range js {
+			time.Sleep(1 * time.Microsecond)
 			j2 := j.(int)
 			total += j2
 			r := new(toolkit.Result)
