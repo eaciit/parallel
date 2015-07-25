@@ -2,71 +2,66 @@ package parallel
 
 import (
 	tk "github.com/eaciit/toolkit"
-	"math"
-	"sync"
 	"time"
 )
 
-type JobResult struct {
-	Status       string
-	Count        int
-	Run          int
-	Success      int
-	Fail         int
-	FailIndexes  []int
-	FailMessages []string
-	Duration     time.Duration
-	Output       interface{}
+type ParallelResult struct {
+	Status   string
+	Count    int
+	Run      int
+	Success  int
+	Fail     int
+	Errors   []string
+	Duration time.Duration
+	Data     []interface{}
 }
 
-type T map[string]interface{}
+func NewParallelResult() *ParallelResult {
+	return &ParallelResult{
+		Errors: []string{},
+		Data:   []interface{}{},
+		Status: "",
+	}
+}
 
-func RunParallelJob(keys []interface{}, numberOfWorker int,
-	f func(key interface{}, in T, result *JobResult) error, parms T) *JobResult {
-	result := new(JobResult)
-	result.Status = "OK"
+func RunParallel(keys []interface{}, workercount int, f func(<-chan interface{}, chan<- *tk.Result)) *ParallelResult {
 	t0 := time.Now()
-	result.FailIndexes = make([]int, 0)
-	result.FailMessages = make([]string, 0)
-	jobCount := len(keys)
-	wg := new(sync.WaitGroup)
-	wg.Add(jobCount)
+	numOfJob := len(keys)
+	jobKeys := make(chan interface{}, numOfJob)
+	jobResults := make(chan *tk.Result, numOfJob)
 
-	blockSize := int(math.Ceil(float64(jobCount) / float64(numberOfWorker)))
-	for blockIdx := 0; blockIdx < numberOfWorker; blockIdx++ {
-		go func(blockId int, w *sync.WaitGroup) {
-			blockStartIdx := blockId * blockSize
-			blockEndIdx := blockStartIdx + blockSize - 1
-			if blockEndIdx > (jobCount - 1) {
-				blockEndIdx = jobCount - 1
-			}
+	r := NewParallelResult()
+	r.Count = numOfJob
+	r.Status = "Running"
 
-			for keyIdx := blockStartIdx; keyIdx <= blockEndIdx; keyIdx++ {
-				result.Run = result.Run + 1
-				if f != nil {
-					tk.Try(func() {
-						key := keys[keyIdx]
-						erun := f(key, parms, result)
-						if erun != nil {
-							result.Fail = result.Fail + 1
-							result.FailIndexes = append(result.FailIndexes, keyIdx)
-							result.FailMessages = append(result.FailMessages, erun.Error())
-						} else {
-							result.Success = result.Success + 1
-						}
-					}).Catch(func(e interface{}) {
-						result.Fail = result.Fail + 1
-						result.FailIndexes = append(result.FailIndexes, keyIdx)
-						result.FailMessages = append(result.FailMessages, e.(error).Error())
-					}).Finally(func() {
-						wg.Done()
-					}).Run()
-				}
-			}
-		}(blockIdx, wg)
+	//--- pool the works
+	for poolCount := 0; poolCount < workercount; poolCount++ {
+		go f(jobKeys, jobResults)
 	}
 
-	wg.Wait()
-	result.Duration = time.Since(t0)
-	return result
+	//--- setting the key for work
+	for keyId := 0; keyId < numOfJob; keyId++ {
+		r.Run++
+		jobKeys <- keys[keyId]
+	}
+
+	//--- collect the process
+	for resultId := 0; resultId < numOfJob; resultId++ {
+		jobResult := <-jobResults
+		if jobResult.Status == tk.Status_OK {
+			r.Success++
+			r.Data = append(r.Data, jobResult.Data)
+		} else {
+			r.Fail++
+			r.Errors = append(r.Errors, jobResult.Message)
+		}
+	}
+
+	if r.Success == r.Count {
+		r.Status = string(tk.Status_OK)
+	} else {
+		r.Status = string(tk.Status_NOK)
+	}
+	r.Duration = time.Since(t0)
+	return r
 }
