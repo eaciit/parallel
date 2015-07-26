@@ -71,6 +71,8 @@ func TestDb1(t *testing.T) {
 		t.Error("Unable to connect to Database | " + e.Error())
 	}
 	defer conn.Close()
+	conn.Execute("appusers", toolkit.M{"find": toolkit.M{}, "operation": base.DB_DELETE})
+
 	success := 0
 	fmt.Printf("Insert %d data with no pool \n", numCount)
 	for _, jb := range idxs {
@@ -81,7 +83,7 @@ func TestDb1(t *testing.T) {
 		user.Set("fullname", "User "+strconv.Itoa(j))
 		user.Set("email", "user"+strconv.Itoa(j)+"@email.com")
 		//_, _, e = conn.Query().From("ORMUsers").Save(user).Run()
-		_, e := conn.Execute("appusers", toolkit.M{"find": toolkit.M{"_id": userid}, "operation": base.DB_INSERT, "data": user})
+		_, e := conn.Execute("appusers", toolkit.M{"find": toolkit.M{"_id": userid}, "operation": base.DB_SAVE, "data": user})
 		if e == nil {
 			success++
 		}
@@ -99,10 +101,8 @@ func TestDb2(t *testing.T) {
 	numCount := pnumCount
 	workerCount := pworkerCount
 	idxs := make([]interface{}, numCount)
-	want := 0
 	for i := 1; i <= numCount; i++ {
-		idxs[i-1] = i
-		want += i
+		idxs[i-1] = i + 2000
 	}
 
 	conn := mongodb.NewConnection("localhost:27888", "", "", "ectest")
@@ -111,6 +111,11 @@ func TestDb2(t *testing.T) {
 		t.Error("Unable to connect to Database | " + e.Error())
 	}
 	defer conn.Close()
+	_, e = conn.Execute("appusers", toolkit.M{"find": toolkit.M{}, "operation": base.DB_DELETE})
+	if e != nil {
+		fmt.Println("Unable to delete: " + e.Error())
+	}
+
 	fmt.Printf("Insert %d data within %d pools \n", numCount, workerCount)
 	pr := RunParallel(idxs, workerCount, func(js <-chan interface{}, rs chan<- *toolkit.Result) {
 		for jb := range js {
@@ -122,7 +127,7 @@ func TestDb2(t *testing.T) {
 			user.Set("email", "user"+strconv.Itoa(j)+"@email.com")
 			r := new(toolkit.Result)
 			//_, _, e = conn.Query().From("ORMUsers").Save(user).Run()
-			_, e := conn.Execute("appusers", toolkit.M{"find": toolkit.M{"_id": userid}, "operation": base.DB_INSERT, "data": user})
+			_, e := conn.Execute("appusers", toolkit.M{"find": toolkit.M{"_id": userid}, "operation": base.DB_SAVE, "data": user})
 			if e == nil {
 				r.Status = toolkit.Status_OK
 				r.Data = user
