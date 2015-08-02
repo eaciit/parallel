@@ -58,6 +58,7 @@ func Test1(t *testing.T) {
 }
 
 func TestDb1(t *testing.T) {
+	//t.Skip()
 	t0 := time.Now()
 	fmt.Println("Test 2a - Insert Data (No Parallel)")
 	numCount := pnumCount
@@ -65,7 +66,8 @@ func TestDb1(t *testing.T) {
 	for i := 1; i <= numCount; i++ {
 		idxs[i-1] = i
 	}
-	conn := mongodb.NewConnection("localhost:27888", "", "", "ectest")
+	conn := mongodb.NewConnection("localhost:27888", "root", "Database.1", "ectest")
+	//conn := mongodb.NewConnection("localhost:27888", "", "", "ectest")
 	e = conn.Connect()
 	if e != nil {
 		t.Error("Unable to connect to Database | " + e.Error())
@@ -105,10 +107,12 @@ func TestDb2(t *testing.T) {
 		idxs[i-1] = i + 2000
 	}
 
-	conn := mongodb.NewConnection("localhost:27888", "", "", "ectest")
+	conn := mongodb.NewConnection("localhost:27888", "root", "Database.1", "ectest")
+	//conn := mongodb.NewConnection("localhost:27888", "", "", "ectest")
 	e = conn.Connect()
 	if e != nil {
 		t.Error("Unable to connect to Database | " + e.Error())
+		return
 	}
 	defer conn.Close()
 	_, e = conn.Execute("appusers", toolkit.M{"find": toolkit.M{}, "operation": base.DB_DELETE})
@@ -127,7 +131,8 @@ func TestDb2(t *testing.T) {
 			user.Set("email", "user"+strconv.Itoa(j)+"@email.com")
 			r := new(toolkit.Result)
 			//_, _, e = conn.Query().From("ORMUsers").Save(user).Run()
-			_, e := conn.Execute("appusers", toolkit.M{"find": toolkit.M{"_id": userid}, "operation": base.DB_SAVE, "data": user})
+			_, e := conn.Execute("appusers",
+				toolkit.M{"find": toolkit.M{"_id": userid}, "operation": base.DB_SAVE, "data": user})
 			if e == nil {
 				r.Status = toolkit.Status_OK
 				r.Data = user
