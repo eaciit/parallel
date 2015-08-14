@@ -44,6 +44,7 @@ func RunParallel(keys []interface{}, workercount int, f func(<-chan interface{},
 		r.Run++
 		jobKeys <- keys[keyId]
 	}
+	close(jobKeys)
 
 	//--- collect the process
 	for resultId := 0; resultId < numOfJob; resultId++ {
