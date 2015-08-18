@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type ParallelResult struct {
+type Result struct {
 	Status   string
 	Count    int
 	Run      int
@@ -16,21 +16,21 @@ type ParallelResult struct {
 	Data     []interface{}
 }
 
-func NewParallelResult() *ParallelResult {
-	return &ParallelResult{
+func NewResult() *Result {
+	return &Result{
 		Errors: []string{},
 		Data:   []interface{}{},
 		Status: "",
 	}
 }
 
-func RunParallel(keys []interface{}, workercount int, f func(<-chan interface{}, chan<- *tk.Result)) *ParallelResult {
+func Run(keys []interface{}, workercount int, f func(<-chan interface{}, chan<- *tk.Result)) *Result {
 	t0 := time.Now()
 	numOfJob := len(keys)
 	jobKeys := make(chan interface{}, numOfJob)
 	jobResults := make(chan *tk.Result, numOfJob)
 
-	r := NewParallelResult()
+	r := NewResult()
 	r.Count = numOfJob
 	r.Status = "Running"
 

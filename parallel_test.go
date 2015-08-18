@@ -38,7 +38,7 @@ func Test1(t *testing.T) {
 
 	total := 0
 	fmt.Printf("Run Parallel %d job within %d pools \n", numCount, workerCount)
-	pr := RunParallel(idxs, workerCount, func(js <-chan interface{}, rs chan<- *toolkit.Result) {
+	pr := Run(idxs, workerCount, func(js <-chan interface{}, rs chan<- *toolkit.Result) {
 		for j := range js {
 			time.Sleep(1 * time.Microsecond)
 			j2 := j.(int)
@@ -121,7 +121,7 @@ func TestDb2(t *testing.T) {
 	}
 
 	fmt.Printf("Insert %d data within %d pools \n", numCount, workerCount)
-	pr := RunParallel(idxs, workerCount, func(js <-chan interface{}, rs chan<- *toolkit.Result) {
+	pr := Run(idxs, workerCount, func(js <-chan interface{}, rs chan<- *toolkit.Result) {
 		for jb := range js {
 			j := jb.(int)
 			user := toolkit.M{}
